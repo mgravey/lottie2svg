@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<title>Lottie frame to SVG</title>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+
+	<style>
+		:root {
+			color-scheme: light;
+			font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+			color: #17201d;
+			background: #eef3f0;
+		}
+
+		* {
+			box-sizing: border-box;
+		}
+
+		body {
+			margin: 0;
+			min-height: 100vh;
+			padding: 32px 20px;
+			display: grid;
+			place-items: center;
+		}
+
+		main {
+			width: min(100%, 920px);
+			padding: clamp(24px, 5vw, 48px);
+			border: 1px solid #d7dfda;
+			border-radius: 24px;
+			background: #ffffff;
+			box-shadow: 0 24px 70px rgba(23, 32, 29, 0.08);
+		}
+
+		h1 {
+			margin: 0;
+			font-size: clamp(1.75rem, 4vw, 2.5rem);
+			letter-spacing: -0.04em;
+		}
+
+		.intro {
+			margin: 8px 0 28px;
+			color: #607069;
+		}
+
+		#drop-zone {
+			min-height: 132px;
+			padding: 24px;
+			display: grid;
+			place-items: center;
+			text-align: center;
+			border: 2px dashed #94a49d;
+			border-radius: 16px;
+			background: #f8faf9;
+			cursor: pointer;
+			transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+		}
+
+		#drop-zone:hover,
+		#drop-zone:focus-visible,
+		#drop-zone.is-dragging {
+			border-color: #16835c;
+			background: #edf8f3;
+			outline: none;
+		}
+
+		#drop-zone.is-dragging {
+			transform: scale(1.01);
+		}
+
+		.drop-title {
+			display: block;
+			font-weight: 750;
+			font-size: 1.05rem;
+		}
+
+		.drop-help {
+			display: block;
+			margin-top: 5px;
+			color: #68766f;
+			font-size: 0.9rem;
+		}
+
+		#file-input {
+			display: none;
+		}
+
+		.workspace {
+			margin-top: 24px;
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) minmax(260px, 0.72fr);
+			gap: 28px;
+			align-items: center;
+		}
+
+		.preview {
+			min-width: 0;
+			border: 1px solid #e0e6e2;
+			border-radius: 18px;
+			background-image:
+				linear-gradient(45deg, #f2f4f3 25%, transparent 25%),
+				linear-gradient(-45deg, #f2f4f3 25%, transparent 25%),
+				linear-gradient(45deg, transparent 75%, #f2f4f3 75%),
+				linear-gradient(-45deg, transparent 75%, #f2f4f3 75%);
+			background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+			background-size: 20px 20px;
+			overflow: hidden;
+		}
+
+		#animation {
+			width: 100%;
+			aspect-ratio: 1;
+		}
+
+		.controls {
+			display: grid;
+			gap: 16px;
+		}
+
+		.file-name {
+			margin: 0;
+			font-weight: 700;
+			overflow-wrap: anywhere;
+		}
+
+		#frame-range,
+		#status {
+			margin: 3px 0 0;
+			color: #68766f;
+			font-size: 0.9rem;
+		}
+
+		label {
+			display: grid;
+			gap: 7px;
+			font-weight: 700;
+		}
+
+		input[type="number"] {
+			width: 100%;
+			padding: 11px 12px;
+			border: 1px solid #aebbb5;
+			border-radius: 10px;
+			font: inherit;
+			font-variant-numeric: tabular-nums;
+		}
+
+		input[type="number"]:focus {
+			border-color: #16835c;
+			outline: 3px solid rgba(22, 131, 92, 0.14);
+		}
+
+		.actions {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 10px;
+		}
+
+		button {
+			min-height: 44px;
+			padding: 0.72rem 0.9rem;
+			border: 1px solid #b9c4bf;
+			border-radius: 10px;
+			background: #ffffff;
+			color: #17201d;
+			font: inherit;
+			font-weight: 700;
+			cursor: pointer;
+		}
+
+		button:hover:not(:disabled) {
+			background: #f1f5f3;
+		}
+
+		button:focus-visible {
+			outline: 3px solid rgba(22, 131, 92, 0.2);
+			outline-offset: 2px;
+		}
+
+		button:disabled {
+			cursor: not-allowed;
+			opacity: 0.5;
+		}
+
+		#download-frame {
+			grid-column: 1 / -1;
+			border-color: #16835c;
+			background: #16835c;
+			color: #ffffff;
+		}
+
+		#download-frame:hover:not(:disabled) {
+			background: #106d4c;
+		}
+
+		#status[data-kind="error"] {
+			color: #b3261e;
+		}
+
+		#status[data-kind="success"] {
+			color: #0b7650;
+		}
+
+		@media (max-width: 700px) {
+			.workspace {
+				grid-template-columns: 1fr;
+			}
+
+			.preview {
+				width: min(100%, 430px);
+				margin-inline: auto;
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<main>
+		<h1>Lottie frame to SVG</h1>
+		<p class="intro">Drop in an animation, choose a frame, and save that exact frame as a vector.</p>
+
+		<div id="drop-zone" role="button" tabindex="0" aria-controls="file-input">
+			<div>
+				<span class="drop-title">Drop a Lottie file here or click to browse</span>
+				<span class="drop-help">Supports Bodymovin JSON and packaged .lottie files</span>
+			</div>
+		</div>
+		<input id="file-input" type="file" accept=".json,.lottie,application/json,application/zip">
+
+		<div class="workspace">
+			<div class="preview">
+				<div id="animation" aria-label="Lottie animation preview"></div>
+			</div>
+
+			<section class="controls" aria-label="SVG export controls">
+				<div>
+					<p class="file-name" id="file-name">earthengineStudio.json</p>
+					<p id="frame-range">Loading frame range…</p>
+				</div>
+
+				<label for="frame-number">
+					Frame number
+					<input id="frame-number" type="number" inputmode="numeric" step="1" value="0" disabled>
+				</label>
+
+				<div class="actions">
+					<button id="download-first" type="button" disabled>First frame</button>
+					<button id="download-last" type="button" disabled>Last frame</button>
+					<button id="download-frame" type="button" disabled>Download selected frame</button>
+				</div>
+
+				<p id="status" role="status" aria-live="polite">Preparing the default animation…</p>
+			</section>
+		</div>
+	</main>
+
+	<script>
+		const container = document.getElementById("animation");
+		const dropZone = document.getElementById("drop-zone");
+		const fileInput = document.getElementById("file-input");
+		const fileName = document.getElementById("file-name");
+		const frameRange = document.getElementById("frame-range");
+		const frameInput = document.getElementById("frame-number");
+		const status = document.getElementById("status");
+		const exportButtons = [
+			document.getElementById("download-first"),
+			document.getElementById("download-last"),
+			document.getElementById("download-frame")
+		];
+
+		let animation;
+		let sourceName = "earthengineStudio";
+		let firstFrame = 0;
+		let lastFrame = 0;
+
+		function setStatus(message, kind = "info") {
+			status.textContent = message;
+			status.dataset.kind = kind;
+		}
+
+		function setExportEnabled(enabled) {
+			frameInput.disabled = !enabled;
+			exportButtons.forEach((button) => {
+				button.disabled = !enabled;
+			});
+		}
+
+		function cleanBaseName(name) {
+			return name.replace(/\.(json|lottie)$/i, "").replace(/[^a-z0-9_-]+/gi, "-") || "lottie";
+		}
+
+		function updateFrameRange(instance) {
+			if (instance !== animation) return;
+
+			firstFrame = Math.round(instance.firstFrame || instance.animationData?.ip || 0);
+			lastFrame = firstFrame + Math.max(0, Math.floor(instance.totalFrames) - 1);
+
+			frameInput.min = firstFrame;
+			frameInput.max = lastFrame;
+			frameInput.value = firstFrame;
+			frameRange.textContent = `Available frames: ${firstFrame}–${lastFrame}`;
+			setExportEnabled(true);
+			setStatus("Ready to export.", "success");
+		}
+
+		function attachAnimationEvents(instance) {
+			instance.addEventListener("DOMLoaded", () => updateFrameRange(instance));
+			instance.addEventListener("data_failed", () => {
+				if (instance !== animation) return;
+				setExportEnabled(false);
+				setStatus("This animation could not be loaded. Try another Lottie file.", "error");
+			});
+		}
+
+		function loadAnimationData(animationData, displayName) {
+			setExportEnabled(false);
+			setStatus("Loading animation…");
+
+			if (animation) {
+				animation.destroy();
+			}
+
+			container.replaceChildren();
+			sourceName = cleanBaseName(displayName);
+			fileName.textContent = displayName;
+			frameRange.textContent = "Loading frame range…";
+
+			animation = lottie.loadAnimation({
+				container,
+				renderer: "svg",
+				loop: true,
+				autoplay: true,
+				animationData,
+				rendererSettings: {
+					preserveAspectRatio: "xMidYMid meet"
+				}
+			});
+
+			attachAnimationEvents(animation);
+		}
+
+		function bytesToDataUrl(bytes, mimeType) {
+			let binary = "";
+			const chunkSize = 0x8000;
+
+			for (let index = 0; index < bytes.length; index += chunkSize) {
+				binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+			}
+
+			return `data:${mimeType};base64,${btoa(binary)}`;
+		}
+
+		function imageMimeType(path) {
+			const extension = path.split(".").pop().toLowerCase();
+			return {
+				avif: "image/avif",
+				gif: "image/gif",
+				jpeg: "image/jpeg",
+				jpg: "image/jpeg",
+				png: "image/png",
+				svg: "image/svg+xml",
+				webp: "image/webp"
+			}[extension] || "application/octet-stream";
+		}
+
+		function embedPackagedImages(animationData, files) {
+			(animationData.assets || []).forEach((asset) => {
+				if (!asset.p || asset.e || asset.p.startsWith("data:")) return;
+
+				const candidates = [
+					`${asset.u || ""}${asset.p}`,
+					asset.p,
+					`images/${asset.p}`
+				].map((path) => path.replace(/^\.\//, ""));
+				const assetPath = candidates.find((path) => files[path]);
+
+				if (assetPath) {
+					asset.p = bytesToDataUrl(files[assetPath], imageMimeType(assetPath));
+					asset.u = "";
+					asset.e = 1;
+				}
+			});
+
+			return animationData;
+		}
+
+		function findPackagedAnimation(files) {
+			let animationPath;
+
+			if (files["manifest.json"]) {
+				const manifest = JSON.parse(fflate.strFromU8(files["manifest.json"]));
+				const animationId = manifest.initial?.animation || manifest.animations?.[0]?.id;
+				if (animationId) {
+					animationPath = `animations/${animationId}.json`;
+				}
+			}
+
+			if (!animationPath || !files[animationPath]) {
+				animationPath = Object.keys(files).find((path) => /^animations\/.*\.json$/i.test(path));
+			}
+
+			if (!animationPath || !files[animationPath]) {
+				throw new Error("No animation JSON was found inside this .lottie package.");
+			}
+
+			const animationData = JSON.parse(fflate.strFromU8(files[animationPath]));
+			return embedPackagedImages(animationData, files);
+		}
+
+		async function readLottieFile(file) {
+			const extension = file.name.split(".").pop().toLowerCase();
+
+			if (extension === "json") {
+				return JSON.parse(await file.text());
+			}
+
+			if (extension === "lottie") {
+				if (!window.fflate) {
+					throw new Error("The .lottie package reader is unavailable.");
+				}
+				const archive = fflate.unzipSync(new Uint8Array(await file.arrayBuffer()));
+				return findPackagedAnimation(archive);
+			}
+
+			throw new Error("Choose a .json or .lottie file.");
+		}
+
+		async function handleFile(file) {
+			if (!file) return;
+
+			try {
+				setExportEnabled(false);
+				setStatus(`Opening ${file.name}…`);
+				const data = await readLottieFile(file);
+
+				if (!data || typeof data !== "object" || !Number.isFinite(Number(data.op))) {
+					throw new Error("The file does not contain valid Lottie animation data.");
+				}
+
+				loadAnimationData(data, file.name);
+			} catch (error) {
+				console.error(error);
+				setStatus(error.message || "The file could not be opened.", "error");
+			}
+		}
+
+		function selectedFrame() {
+			const value = Number(frameInput.value);
+
+			if (!Number.isInteger(value) || value < firstFrame || value > lastFrame) {
+				frameInput.focus();
+				setStatus(`Enter a whole frame number from ${firstFrame} to ${lastFrame}.`, "error");
+				return null;
+			}
+
+			return value;
+		}
+
+		function waitForRenderedFrame() {
+			return new Promise((resolve) => {
+				requestAnimationFrame(() => requestAnimationFrame(resolve));
+			});
+		}
+
+		async function downloadFrame(frame) {
+			if (!animation) return;
+
+			frameInput.value = frame;
+			animation.goToAndStop(frame - firstFrame, true);
+			await waitForRenderedFrame();
+
+			const svg = container.querySelector("svg");
+
+			if (!svg) {
+				setStatus("No SVG renderer output was found.", "error");
+				return;
+			}
+
+			const clone = svg.cloneNode(true);
+			clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+
+			const svgContent = new XMLSerializer().serializeToString(clone);
+			const blob = new Blob([svgContent], { type: "image/svg+xml;charset=utf-8" });
+			const url = URL.createObjectURL(blob);
+			const link = document.createElement("a");
+
+			link.href = url;
+			link.download = `${sourceName}-frame-${frame}.svg`;
+			link.click();
+			setTimeout(() => URL.revokeObjectURL(url), 0);
+			setStatus(`Downloaded frame ${frame}.`, "success");
+		}
+
+		dropZone.addEventListener("click", () => fileInput.click());
+		dropZone.addEventListener("keydown", (event) => {
+			if (event.key === "Enter" || event.key === " ") {
+				event.preventDefault();
+				fileInput.click();
+			}
+		});
+
+		["dragenter", "dragover"].forEach((eventName) => {
+			dropZone.addEventListener(eventName, (event) => {
+				event.preventDefault();
+				dropZone.classList.add("is-dragging");
+			});
+		});
+
+		["dragleave", "drop"].forEach((eventName) => {
+			dropZone.addEventListener(eventName, (event) => {
+				event.preventDefault();
+				dropZone.classList.remove("is-dragging");
+			});
+		});
+
+		dropZone.addEventListener("drop", (event) => handleFile(event.dataTransfer.files[0]));
+		fileInput.addEventListener("change", () => {
+			handleFile(fileInput.files[0]);
+			fileInput.value = "";
+		});
+
+		document.getElementById("download-first").addEventListener("click", () => downloadFrame(firstFrame));
+		document.getElementById("download-last").addEventListener("click", () => downloadFrame(lastFrame));
+		document.getElementById("download-frame").addEventListener("click", () => {
+			const frame = selectedFrame();
+			if (frame !== null) downloadFrame(frame);
+		});
+		frameInput.addEventListener("keydown", (event) => {
+			if (event.key === "Enter") {
+				event.preventDefault();
+				document.getElementById("download-frame").click();
+			}
+		});
+
+		animation = lottie.loadAnimation({
+			container,
+			renderer: "svg",
+			loop: true,
+			autoplay: true,
+			path: "./earthengineStudio.json",
+			rendererSettings: {
+				preserveAspectRatio: "xMidYMid meet"
+			}
+		});
+		attachAnimationEvents(animation);
+	</script>
+</body>
+</html>
