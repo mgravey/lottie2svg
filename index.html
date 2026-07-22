@@ -116,6 +116,18 @@
 		#animation {
 			width: 100%;
 			aspect-ratio: 1;
+			display: grid;
+			place-items: center;
+		}
+
+		#preview-placeholder {
+			max-width: 220px;
+			margin: 0;
+			padding: 24px;
+			color: #718079;
+			font-size: 0.95rem;
+			line-height: 1.5;
+			text-align: center;
 		}
 
 		.controls {
@@ -235,13 +247,15 @@
 
 		<div class="workspace">
 			<div class="preview">
-				<div id="animation" aria-label="Lottie animation preview"></div>
+				<div id="animation" aria-label="Lottie animation preview">
+					<p id="preview-placeholder">Your animation preview will appear here.</p>
+				</div>
 			</div>
 
 			<section class="controls" aria-label="SVG export controls">
 				<div>
-					<p class="file-name" id="file-name">earthengineStudio.json</p>
-					<p id="frame-range">Loading frame range…</p>
+					<p class="file-name" id="file-name">No file loaded</p>
+					<p id="frame-range">Drop a Lottie file to begin.</p>
 				</div>
 
 				<label for="frame-number">
@@ -255,7 +269,7 @@
 					<button id="download-frame" type="button" disabled>Download selected frame</button>
 				</div>
 
-				<p id="status" role="status" aria-live="polite">Preparing the default animation…</p>
+				<p id="status" role="status" aria-live="polite">Waiting for a Lottie file.</p>
 			</section>
 		</div>
 	</main>
@@ -275,7 +289,7 @@
 		];
 
 		let animation;
-		let sourceName = "earthengineStudio";
+		let sourceName = "lottie";
 		let firstFrame = 0;
 		let lastFrame = 0;
 
@@ -538,17 +552,6 @@
 			}
 		});
 
-		animation = lottie.loadAnimation({
-			container,
-			renderer: "svg",
-			loop: true,
-			autoplay: true,
-			path: "./earthengineStudio.json",
-			rendererSettings: {
-				preserveAspectRatio: "xMidYMid meet"
-			}
-		});
-		attachAnimationEvents(animation);
 	</script>
 </body>
 </html>
